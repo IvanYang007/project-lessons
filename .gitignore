@@ -1,0 +1,11 @@
+# analysis scratch — never commit generated bundles or partial runs
+.project-lessons-work/
+*.tmp
+
+# python
+__pycache__/
+.venv/
+
+# os
+Thumbs.db
+.DS_Store
