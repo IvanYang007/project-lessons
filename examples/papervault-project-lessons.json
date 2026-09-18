@@ -1,0 +1,129 @@
+{
+  "schema": "project-lessons/v1",
+  "repository": "papervault",
+  "scope": "repository",
+  "generated_from": {
+    "head": "b24ef97",
+    "first": "9d89c9d",
+    "commits_analyzed": 66,
+    "date_range": ["2026-07-20T21:27:30-04:00", "2026-07-21T20:35:40-04:00"],
+    "fix_commits": 35,
+    "fix_ratio": 0.53
+  },
+  "rules": [
+    {
+      "id": "PL-001",
+      "text": "Never add a second Pdfium instance or pass a handle across threads. PdfRenderer owns it privately.",
+      "grade": "observed",
+      "phase": "removals",
+      "evidence": ["a815c24", "f22d42f", "7eca893", "1b09924", "be40850", "6cdcbe8"],
+      "paths": ["src/preview/pdf_render.rs"]
+    },
+    {
+      "id": "PL-002",
+      "text": "There are two PDF paths on purpose: pdf-extract indexes text, pdfium-render rasterises pages. Do not unify them.",
+      "grade": "observed",
+      "phase": "removals",
+      "evidence": ["292ee36"],
+      "paths": ["src/indexer/extractors/pdf.rs", "src/preview/pdf_render.rs", "Cargo.toml"]
+    },
+    {
+      "id": "PL-003",
+      "text": "When changing what a runtime stop clears, enumerate every field of FolderRuntime and the watcher and clear them in one commit.",
+      "grade": "observed",
+      "phase": "recurrence",
+      "evidence": ["c777cbf", "f19608f"],
+      "paths": ["src/app.rs", "src/runtime.rs", "src/watcher/watcher.rs"]
+    },
+    {
+      "id": "PL-004",
+      "text": "For a bug you cannot reproduce from reading the code, land a 'debug:' commit that adds tracing before attempting a fix.",
+      "grade": "observed",
+      "phase": "conventions",
+      "evidence": ["c0968c1", "86fc6d3", "a815c24", "8e6fdf8", "7a2229c"],
+      "paths": []
+    },
+    {
+      "id": "PL-005",
+      "text": "One implementation unit per commit. Use the unit list in docs/plans/2026-01-15-001-feat-pdf-search-viewer-plan.md as the sequence.",
+      "grade": "inferred",
+      "phase": "recurrence",
+      "evidence": ["8dd1fd8", "68b62f9", "d54a8e1", "6e1698d", "1a33808"],
+      "paths": ["docs/plans/"]
+    },
+    {
+      "id": "PL-006",
+      "text": "[profile.release] stays as lto = true only. Do not add panic = \"abort\".",
+      "grade": "observed",
+      "phase": "removals",
+      "evidence": ["1c98217", "fd84001"],
+      "paths": ["Cargo.toml"]
+    },
+    {
+      "id": "PL-007",
+      "text": "Put new state and event handling in the module that owns the data; let src/app.rs only dispatch.",
+      "grade": "inferred",
+      "phase": "coupling",
+      "evidence": ["2313209", "097aaab"],
+      "paths": ["src/app.rs", "src/tags/store.rs", "src/indexer/pipeline.rs", "src/runtime.rs"]
+    },
+    {
+      "id": "PL-008",
+      "text": "A fix for a reoccurring failure gets a #[test] in the same commit, in the #[cfg(test)] mod tests block of the owning module.",
+      "grade": "inferred",
+      "phase": "testing",
+      "evidence": ["a129cf0", "d54a8e1", "bd50c54", "8f78d74", "6e1698d", "097aaab", "b6588d8"],
+      "paths": ["src/search/engine.rs", "src/tags/store.rs"]
+    }
+  ],
+  "risk_areas": [
+    { "path": "src/app.rs", "score": 1, "commits": 33, "fixes": 22, "fix_ratio": 0.67, "why": "god object, no boundary", "evidence": ["2313209", "097aaab"] },
+    { "path": "src/preview/pdf_render.rs", "score": 2, "commits": 17, "fixes": 11, "fix_ratio": 0.65, "why": "pdfium threading", "evidence": ["a815c24", "7eca893", "be40850"] },
+    { "path": "src/indexer/extractors/pdf.rs", "score": 3, "commits": 9, "fixes": 8, "fix_ratio": 0.89, "why": "highest fix density in the repo", "evidence": ["1a33808", "d54a8e1", "292ee36"] },
+    { "path": "src/indexer/pipeline.rs", "score": 4, "commits": 14, "fixes": 10, "fix_ratio": 0.71, "why": "indexing orchestration", "evidence": [] },
+    { "path": "src/main.rs", "score": 5, "commits": 16, "fixes": 10, "fix_ratio": 0.62, "why": "thread wiring and startup order", "evidence": ["6e1698d", "bd6ce2e"] },
+    { "path": "src/search/engine.rs", "score": 6, "commits": 13, "fixes": 9, "fix_ratio": 0.69, "why": "tokenizer and reader registration", "evidence": ["a129cf0", "634cc70"] },
+    { "path": "src/tags/store.rs", "score": 7, "commits": 12, "fixes": 7, "fix_ratio": 0.58, "why": "rusqlite schema and key handling", "evidence": ["f0da898", "8f78d74"] },
+    { "path": "Cargo.toml", "score": 8, "commits": 8, "fixes": 4, "fix_ratio": 0.5, "why": "profile and DLL-adjacent settings", "evidence": ["1c98217", "fd84001"] }
+  ],
+  "couplings": [
+    { "pair": ["src/app.rs", "src/main.rs"], "count": 12, "reading": "mechanical: wiring. informational only." },
+    { "pair": ["src/app.rs", "src/tags/store.rs"], "count": 11, "reading": "real: tag UI and tag store change together" },
+    { "pair": ["src/app.rs", "src/indexer/pipeline.rs"], "count": 11, "reading": "real: progress reporting split across both" },
+    { "pair": ["src/app.rs", "src/search/engine.rs"], "count": 10, "reading": "symptom of PL-007" },
+    { "pair": ["src/app.rs", "src/preview/pdf_render.rs"], "count": 9, "reading": "symptom of PL-007" },
+    { "pair": ["src/indexer/extractors/pdf.rs", "src/preview/pdf_render.rs"], "count": 7, "reading": "real: the two PDF paths must agree on file handling" },
+    { "pair": ["src/main.rs", "src/watcher/watcher.rs"], "count": 6, "reading": "real: shutdown wiring, see PL-003" }
+  ],
+  "removed": [
+    { "what": "panic = \"abort\" in [profile.release]", "reason_quoted": "fix: remove panic=abort from release profile", "evidence": ["fd84001"] },
+    { "what": "pdfium in the indexing path", "reason_quoted": "switch indexer to pure-Rust pdf-extract, remove pdfium_lock", "evidence": ["292ee36"] },
+    { "what": "a global pdfium Mutex", "reason_quoted": "shrink lock scope", "evidence": ["1b09924", "292ee36"] }
+  ],
+  "checklist": [
+    { "id": "PL-C1", "text": "Run `cargo test`; it must pass before you start.", "evidence": [] },
+    { "id": "PL-C2", "text": "Run `cargo build --release` with a 30s timeout if you touched Cargo.toml or thread wiring; a build that never returns has deadlocked, not crashed.", "evidence": ["a815c24"] },
+    { "id": "PL-C3", "text": "Confirm the tree is clean: `git status --porcelain`.", "evidence": [] },
+    { "id": "PL-C4", "text": "Read src/preview/pdf_render.rs lines 1-100 if your change is anywhere near PDF handling.", "evidence": ["a815c24"] },
+    { "id": "PL-C5", "text": "One implementation unit per commit; add a plan file in docs/plans/ for anything non-trivial.", "evidence": ["8dd1fd8", "68b62f9"] },
+    { "id": "PL-C6", "text": "Do not add a second Pdfium handle or a Mutex around one, and do not merge the text-extraction path with the render path.", "evidence": ["292ee36", "7eca893"] },
+    { "id": "PL-C7", "text": "If you add a thread, a channel, or a shutdown field, extend the runtime stop path in the same commit, enumerating every field.", "evidence": ["c777cbf", "f19608f"] },
+    { "id": "PL-C8", "text": "Put new state in the module that owns the data. Do not add a subsystem to src/app.rs.", "evidence": ["2313209"] },
+    { "id": "PL-C9", "text": "For a bug you cannot reproduce by reading, land a `debug:` commit with tracing first.", "evidence": ["a815c24", "c0968c1"] },
+    { "id": "PL-C10", "text": "Run `cargo test`; every test that passed before still passes, and a reoccurring failure gains a #[test] in the owning module.", "evidence": ["d54a8e1"] },
+    { "id": "PL-C11", "text": "If you touched one side of a coupling pair, check the other side.", "evidence": [] },
+    { "id": "PL-C12", "text": "Do not edit [profile.release] beyond lto = true.", "evidence": ["fd84001"] }
+  ],
+  "analysis_notes": {
+    "coverage": "66 commits, 100% of history; 33 paths under src/ plus Cargo.toml",
+    "excluded": ["*.md", "Cargo.lock", "docs/"],
+    "weak_signals": [
+      "The reason panic = \"abort\" was removed is not in the history; only the removal is evidence.",
+      "No path was ever deleted, so no removed-feature lesson exists.",
+      "Couplings were counted over 66 commits; a pair at count 5 is three events away from noise."
+    ],
+    "unknowns": [
+      "Repository is 23 hours old and single author. No rule has survived a second developer or a second month."
+    ]
+  }
+}
