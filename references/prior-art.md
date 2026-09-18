@@ -38,9 +38,9 @@ skill applies to commit history: grade the claim.
 | [ChrisCooneyUK/git-log-context-harvesting](https://github.com/ChrisCooneyUK/git-log-context-harvesting) | 1 | 0 | 2 | 1 | 2 | 2 | 1 | 0 | **9** | Full |
 | [yagizdo/quiver create-agents-md](https://github.com/yagizdo/quiver/blob/master/skills/create-agents-md/SKILL.md) | 0 | 0 | 2 | 2 | 2 | 1 | 2 | 0 | **9** | Full |
 | [KyaniteLabs/devarch-framework](https://github.com/KyaniteLabs/devarch-framework) | 1 | 1 | 0 | 1 | 1 | 1 | 1 | 2 | **8** | Partial |
+| [udaybandaru/code-archaeologist](https://github.com/udaybandaru/code-archaeologist) | 1 | 0 | 0 | 2 | 1 | 0 | 1 | 2 | **7** | Full |
 | [matthewp/recall](https://github.com/matthewp/recall) | 1 | 0 | 1 | 2 | 2 | 0 | 1 | 0 | **7** | Full |
 | [pedronauck/skills lesson-learned](https://claudeskills.info/skills/pedronauck/skills/lesson-learned/) | 1 | 0 | 2 | 2 | 0 | 0 | 1 | 0 | **6** | Full |
-| [udaybandaru/code-archaeologist](https://github.com/udaybandaru/code-archaeologist) | ? | ? | ? | ? | ? | ? | ? | ? | n/a | Not read |
 | [hozakar/project-memory](https://github.com/hozakar/project-memory) | 0 | 0 | 1 | 1 | 2 | 1 | 1 | 0 | **6** | Summary |
 | [velantrian/agents-remember](https://github.com/velantrian/agents-remember) | 1 | 0 | 1 | 1 | 2 | 2 | 1 | 2 | **10** | Summary |
 | [QuantisDevelopment/git-memory](https://github.com/bandtincorporated8/git-memory) | 0 | 0 | 0 | 1 | 1 | 1 | 1 | 2 | **6** | Summary |
@@ -124,6 +124,17 @@ that carry most of the risk signal: **change coupling** (files that change toget
 reveal hidden contracts) and **hotspots** (churn x complexity). Both are cheap to
 reimplement in shell, which removes the JVM dependency.
 
+**code-archaeologist** contributes one genuinely original idea and three good ones.
+The original: **intelligent commit weighting.** It classifies each commit as a squashed
+PR merge (weight 1.0), a regular commit (0.5), or a dev-loop commit (0.1), so a function
+modified ten times in WIP commits is not mistaken for a hotspot. That is the right
+correction for a repository with a squash-merge workflow and long dev-loop noise. Its
+other contributions: function-level rather than file-level hotspots, a dependency
+evolution graph that can surface circular dependencies and god objects, and pattern
+adoption percentages with a violation count. Its weakness is the field's common one: it
+cites commit hashes but never grades confidence, and its per-query CLI output is not a
+durable artifact.
+
 **Quick remedy commits** (Wen et al., EMSE 2022) contribute the best cheap proxy for
 recurrence I found: commits that quickly repair an omission in a previous commit. SZZ
 does this more precisely but needs line-level blame archaeology, and its own literature
@@ -164,6 +175,7 @@ Taken:
 | quiver create-agents-md | BLOCKING quality gates; the paste-test for generic advice; do not restate the linter; omit rather than pad |
 | lesson-learned | cap the lessons; cite files and hashes; say when there is no lesson |
 | Code Maat / Tornhill | change coupling and hotspot scoring, reimplemented in shell and Python |
+| code-archaeologist | optional commit weighting for repos with a squash-merge workflow and dev-loop noise (see `references/analysis-playbook.md` section 1.3) |
 | Wen et al. | quick-remedy pairing as the recurrence signal |
 | Removed from SZZ / RegMiner | line-level bug-introducing attribution — rejected as too costly for the signal gained |
 
@@ -183,13 +195,16 @@ Changed:
 
 ## Honest limits of this evaluation
 
-- I did not read `udaybandaru/code-archaeologist`, so it is unscored. Its README claims
-  ten analysis capabilities and fourteen architecture patterns, which would place it
-  near repo-history if the claims hold.
-- Rows marked *Summary* are scored from search-result summaries, not source. Their
-  scores may be wrong in either direction.
-- No candidate was run end to end by me. The scores measure described design, not
-  measured output quality.
+- Rows marked *Partial* or *Summary* are scored from a README or a search-result summary,
+  not from source. Their scores may be wrong in either direction. Only repo-history,
+  code-archaeologist, git-log-context-harvesting, quiver create-agents-md and
+  lesson-learned were read in full.
+- No candidate was run end to end by me. The scores measure described design, not measured
+  output quality. The two artifacts in `examples/` are this skill's output, not theirs.
+- Two of the eight dimensions are judgement calls, not measurements. *Specificity
+  enforcement* and *cost control* are inferred from documented behaviour, not benchmarked.
 - Neither ablation proves this skill works. It is a design argument, not a result. The
-  honest claim is: the document is shaped so that the parts shown to be followed are
-  kept and the parts shown not to help are compressed.
+  honest claim is: the document is shaped so that the parts shown to be followed are kept
+  and the parts shown not to help are compressed.
+- The two validation repositories are both single-author. Nothing here has been tested on
+  a repository with real multi-author review history or a year of releases.

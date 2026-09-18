@@ -104,6 +104,29 @@ git log --pretty=format: --name-only | Where-Object { $_ } | Group-Object |
   Sort-Object Count -Descending | Select-Object -First 30 Count, Name
 ```
 
+**Optional refinement — weight commits by significance.** Raw churn treats a typo fix and
+a reviewed, squashed feature merge as equal. If the repository uses squash-merge pull
+requests, weight them so a hotspot reflects durability rather than editing volume
+(technique from `code-archaeologist`):
+
+| Commit shape | Weight | Detection |
+| --- | --- | --- |
+| Squashed PR merge | 1.0 | subject ends `(#<n>)`, or `Merge pull request #<n>` |
+| Regular commit | 0.5 | default |
+| Dev-loop / WIP | 0.1 | `wip`, `tmp`, `debug`, `typo`, `oops`, `revert`, or `fixup!` in the subject |
+
+```bash
+# how many commits look like squashed PR merges
+git log --pretty=format:"%s" | rg -c '\(#[0-9]+\)$'
+# how many look like dev-loop noise
+git log --pretty=format:"%s" | rg -ci '\b(wip|tmp|debug|typo|oops|fixup!)\b'
+```
+
+Apply this **only when the condition holds**, and state in Analysis notes whether you
+did. On a single-author repository built in one session (papervault: 53% of commits are
+`fix:`), the fixes are the real work and weighting them down would delete the signal.
+Weighting is a correction for review-process noise, not a general improvement.
+
 ### 1.4 Bus factor
 
 ```bash
