@@ -38,6 +38,35 @@ rules**, each tied to a commit hash and graded for evidence strength.
 - Single-author repo with all commits in one day: same.
 - The user wants API docs or a README: that is a different job.
 
+## Scoped runs — memory for one category of task
+
+The default run produces one document for the whole repository. When the caller asks for
+memory about a *category* of work - "everything about migrations", "the testing story",
+"what to know before touching the parser" - narrow the analysis instead of writing a
+second generic document.
+
+Pass a scope as one of:
+
+| Scope | How to narrow |
+| --- | --- |
+| Path or subsystem | append `-- <path>` to every command in Phases 1-5, and to the `scripts/recurrence.py` dump |
+| Message class | add `--grep` / `-G` to restrict to `fix:`, `refactor:`, `perf:`, or `test` history |
+| Time window | add `--since` / `<sha>..HEAD` |
+| Task intent | filter the evidence bundle by the files a task would touch, then keep only rules whose `paths` intersect |
+
+Rules for a scoped run:
+
+- Keep the same six-section contract. A scoped document is a smaller PROJECT_LESSONS.md,
+  not a different shape.
+- Write to `PROJECT_LESSONS.<scope>.md` and set `"scope"` in `project-lessons.json`.
+  Never overwrite the repository-wide document with a scoped one.
+- Add the paths you excluded to Analysis notes. A scoped document that does not say what
+  it left out reads as if it covered everything.
+- Prefer many small scoped runs only when the caller asks for them. One good
+  repository-wide document beats five narrow ones nobody reads.
+- A scoped run is cheap: reuse the repository-wide dump and filter it, rather than
+  re-walking the git log.
+
 ## Workflow
 
 Run phases in order. Each phase produces evidence; only Phase 6 writes prose.
@@ -335,6 +364,7 @@ query it:
 {
   "schema": "project-lessons/v1",
   "repository": "<name>",
+  "scope": "repository",
   "generated_from": { "head": "<sha>", "commits_analyzed": 0, "date_range": ["", ""] },
   "rules": [ { "id": "PL-001", "text": "", "grade": "observed",
                "evidence": ["<sha>"], "paths": [], "phase": "recurrence" } ],
@@ -433,3 +463,11 @@ and throws away human review effort.
 - `references/analysis-playbook.md` — full command reference per signal
 - `references/evidence-grading.md` — how to grade, and when to say "unknown"
 - `references/prior-art.md` — evaluation of the tools and papers this skill draws on
+
+## Scoped output naming
+
+| Run | Document | `scope` in JSON |
+| --- | --- | --- |
+| Whole repository | `PROJECT_LESSONS.md` | `repository` |
+| One subsystem | `PROJECT_LESSONS.<subsystem>.md` | the path |
+| One commit class | `PROJECT_LESSONS.<class>.md` | e.g. `fix-history` |

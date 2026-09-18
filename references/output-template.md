@@ -200,6 +200,7 @@ thin. This section is required when any lesson rests on `[weak]` evidence.>
 | Section order | Fixed. Do not reorder. |
 | Machine-readable mirror | `project-lessons.json`, same content, schema `project-lessons/v1`. |
 | Location | Repository root. |
+| Scoped run | `PROJECT_LESSONS.<scope>.md`; set `"scope"` in the JSON. Never overwrite the repository-wide file. |
 
 ## Mapping from the analysis to the sections
 

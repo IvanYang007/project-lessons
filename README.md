@@ -125,6 +125,11 @@ Say any of:
 - "what mistakes has this repo made before?"
 - "which files are high-risk here?"
 - "refresh the project lessons"
+- "write memory for just the testing story" — a scoped run
+
+A scoped run narrows the analysis to a path, a commit class, or a time window and
+writes `PROJECT_LESSONS.<scope>.md`, leaving the repository-wide document untouched.
+Spoken as a task category rather than as a second audit.
 
 ## Safety
 
