@@ -73,7 +73,7 @@ evidence bundle (Markdown, in .project-lessons-work/)
    v  8. gates       BLOCKING checks: every rule cited, graded, and non-generic
 ```
 
-Recurrence detection is the core of the skill. Five signals, all mechanical:
+Recurrence detection is the core of the skill. Six signals, all mechanical:
 
 1. **Quick-remedy attribution** — a `fix:` commit within 72h of an earlier non-fix commit
    that touched one of the same files. The earlier change omitted something. Each fix is
@@ -82,14 +82,21 @@ Recurrence detection is the core of the skill. Five signals, all mechanical:
    (Wen et al., *Quick remedy commits and their impact on mining software repositories*,
    EMSE 2022.)
 2. **Fix storms** — runs of fix commits with no intervening feature commit. The work
-   landed before it was ready.
+   landed before it was ready. Zero-span runs are labelled `batch`: a rebase or import, not
+   a storm.
 3. **Fix-cluster files** — one file with three or more `fix:` commits.
-4. **Same-bug-again text** — `again`, `still`, `same`, `also`, `forgot`, `missing`,
-   `regression`, `hotfix` in fix messages.
+4. **Same-bug-again text** — `again`, `still`, `same`, `forgot`, `regression` in fix
+   messages.
 5. **Fix commits that changed test code** — detected by diff marker, not just by file
    path, so colocated and inline tests are found.
+6. **Recurrence by topic** — the noun the fixes keep returning to. This is the only signal
+   that survives multi-author, PR-driven history.
 
-Signals 1 and 4 are the ones that find a *repeated* mistake rather than a single bug.
+Signals 1, 4 and 6 are the ones that find a *repeated* mistake rather than a single bug.
+Signal 1 stops working on a repository with real review history: on a 68-contributor
+project it could place only 18 of 70 fixes, because a squash-merged fix answers an issue,
+not the merge that introduced the problem. Signal 6 plus an explicit keyword probe found
+the real cluster.
 
 ## Layout
 
@@ -99,9 +106,9 @@ references/output-template.md  the exact PROJECT_LESSONS.md contract
 references/analysis-playbook.md  full command reference per signal
 references/evidence-grading.md   how to grade, and how to scrub secrets
 references/prior-art.md          evaluation of the tools and papers below
-scripts/recurrence.py          dependency-free R1-R5 detector
+scripts/recurrence.py          dependency-free R1-R6 detector
 scripts/check_output.py        enforces the Phase 7 BLOCKING gates
-examples/                      two real generated artifacts, for calibration
+examples/                      three real generated artifacts, for calibration
 ```
 
 ## Install
@@ -163,15 +170,16 @@ once**, which is the one class of lesson an agent most needs to not repeat.
 
 ## Validation
 
-Run end to end on two real repositories with different shapes. Both artifacts pass every
-blocking gate in `scripts/check_output.py`.
+Run end to end on three real repositories with different shapes. All three artifacts pass
+every blocking gate in `scripts/check_output.py`.
 
 | Repo | Shape | What it exercised |
 | --- | --- | --- |
 | [papervault](examples/papervault-PROJECT_LESSONS.md) | 66 commits, 1 author, 23 hours, Rust | fix storms, quick-remedy attribution, the inline-test detection bug |
 | [CountUp-Android](examples/countup-PROJECT_LESSONS.md) | 176 commits, 1 author, 4 weeks, Android | removals, prior-document cross-check, committed-secret scan, coupling |
+| [ponytail](examples/ponytail-PROJECT_LESSONS.md) | 210 commits, **68 contributors**, 8 weeks, cross-agent skill package | multi-author PR workflow, topic recurrence, manifest drift, adapter mirrors |
 
-Six defects were found and fixed by that validation:
+Nine defects were found and fixed by that validation:
 
 1. Quick-remedy pairing flooded on a burst-fix repo, because every fix sat inside the
    window of every other fix. Replaced with attribution to the nearest earlier non-fix
@@ -181,18 +189,28 @@ Six defects were found and fixed by that validation:
 3. The R1 table's long tail of single-fix rows buried the signal. Rows now require two or
    more follow-up fixes.
 4. Nothing probed for a repository that already documents its own recurring faults.
-   CountUp carried `docs/RECURRING_ISSUES.md` with 10 defects and a 12-item checklist.
+   CountUp carries `docs/RECURRING_ISSUES.md` with 10 defects and a 12-item checklist.
    Phase 0.2 now finds those documents and forbids duplicating them.
 5. Nothing scanned for secrets that were deleted but remain in history. CountUp still has
    a keystore password in its pushed history.
 6. Nothing enforced the BLOCKING gates. `scripts/check_output.py` now does, and it
    immediately caught two gate failures in the papervault artifact.
+7. Every signal was timing-based, so all of them went quiet on a 68-contributor PR-driven
+   repository. Signal 6 clusters by topic and is the only one that still found the
+   recurring mistake — 25 commits, 36% of all fixes.
+8. A run of five fixes at the same timestamp was reported as a "storm". It was a rebase.
+   Zero-span runs are now labelled `batch`.
+9. SKILL.md numbered the signals differently from the script. Both now use R1-R6.
 
 ## Status
 
 Working. The skill, its references, the recurrence detector, and the gate checker are all
-in place. What is still missing is a repository with multi-author history and a large
-history over months; both validated repos are single-author.
+in place, validated against single-author and 68-contributor repositories over 23 hours,
+4 weeks and 8 weeks of history.
+
+Not yet tested: a repository with a year or more of releases, and any language whose test
+layout the R5 detector has not seen (the marker list covers Rust, Python, JS/TS, Go and
+Java).
 
 ## License
 

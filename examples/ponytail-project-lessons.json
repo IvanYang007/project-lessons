@@ -1,0 +1,153 @@
+{
+  "schema": "project-lessons/v1",
+  "repository": "ponytail",
+  "scope": "repository",
+  "generated_from": {
+    "head": "2ed6c52",
+    "first": "8c279cb",
+    "commits_analyzed": 202,
+    "commits_total": 210,
+    "merge_commits": 8,
+    "date_range": ["2026-06-12T02:52:37+02:00", "2026-08-08T00:44:01+03:00"],
+    "contributor_emails": 68,
+    "top_author_commits": 77,
+    "fix_commits": 70,
+    "fix_ratio": 0.34,
+    "squash_merge_subjects": 167,
+    "workflow": "squash-merge pull requests"
+  },
+  "prior_documents": [
+    { "path": "AGENTS.md", "used_as": "cited, not duplicated" },
+    { "path": "docs/agent-portability.md", "commits": 18, "used_as": "cited; covers adapters, not platforms" },
+    { "path": "docs/platform-native.md", "used_as": "cited" },
+    { "path": "skills/ponytail/SKILL.md", "used_as": "cited" }
+  ],
+  "security_findings": [],
+  "security_note": "Clean. No secret-shaped path was ever added (git log --diff-filter=A --name-only filtered on credential patterns returns nothing).",
+  "rules": [
+    {
+      "id": "PL-001",
+      "text": "Before merging anything that reads/writes a file, spawns a process, or builds a path: strip a UTF-8 BOM before parsing, quote paths for the host shell, resolve the interpreter from process.execPath or sys.executable, and normalize CRLF.",
+      "grade": "observed",
+      "phase": "recurrence",
+      "evidence": ["a3bc7db", "9ec4fb8", "2b426c6", "2ba0262", "147bcfd", "215777d", "fb72987", "3869218", "5eb1fd8", "1469048", "7e6eca6", "515fb4c"],
+      "paths": ["hooks/", "tests/hooks-windows.test.js", "benchmarks/"]
+    },
+    {
+      "id": "PL-002",
+      "text": "A version bump touches all 10 manifests, then run node scripts/check-versions.js. Pin an absolute version and compare it to the release tag; never rely on pairwise agreement between manifests, because they can all be stale together.",
+      "grade": "observed",
+      "phase": "conventions",
+      "evidence": ["763e04d", "7790c37", "83493b9", "c99757a"],
+      "paths": ["scripts/check-versions.js", ".claude-plugin/plugin.json", ".codex-plugin/plugin.json", ".devin-plugin/plugin.json", ".github/plugin/plugin.json", ".qoder-plugin/plugin.json", "plugin.json", "plugin.yaml", "gemini-extension.json", "package.json"]
+    },
+    {
+      "id": "PL-003",
+      "text": "Editing AGENTS.md or a skill body requires re-syncing the adapter mirrors in the same PR; run node scripts/check-rule-copies.js.",
+      "grade": "observed",
+      "phase": "coupling",
+      "evidence": ["cf9cbd5"],
+      "paths": ["AGENTS.md", "docs/agent-portability.md", "scripts/check-rule-copies.js"]
+    },
+    {
+      "id": "PL-004",
+      "text": "In this PR-driven repository a fix does not follow the commit it repairs. Use the topic probe, not the timing probe, to find recurrence.",
+      "grade": "observed",
+      "phase": "recurrence",
+      "evidence": ["1556f10b", "147bcfd6", "d6766353", "084f10fb", "45f7d2f8"],
+      "paths": []
+    },
+    {
+      "id": "PL-005",
+      "text": "Recurrence here is topical: portability, manifests, uninstall, statusline, config. Run both unigram clustering and an explicit keyword probe.",
+      "grade": "observed",
+      "phase": "recurrence",
+      "evidence": ["ae24cd0b", "25185a4", "40e50d9", "4286903a"],
+      "paths": ["tests/hooks.test.js", "tests/uninstall.test.js"]
+    },
+    {
+      "id": "PL-006",
+      "text": "A revert of a skill-body rule change must also re-sync the adapter mirrors.",
+      "grade": "observed",
+      "phase": "removals",
+      "evidence": ["cf9cbd5"],
+      "paths": ["skills/ponytail/SKILL.md"]
+    },
+    {
+      "id": "PL-007",
+      "text": "Any change to what install writes must be matched in scripts/uninstall.js and tests/uninstall.test.js in the same PR. Install/uninstall symmetry is a contract, not two scripts.",
+      "grade": "inferred",
+      "phase": "coupling",
+      "evidence": ["ae24cd0b", "25185a4", "40e50d9", "4286903a"],
+      "paths": ["scripts/uninstall.js", "tests/uninstall.test.js"]
+    },
+    {
+      "id": "PL-008",
+      "text": "A fix ships with the test that would have caught it; platform fixes go in tests/hooks-windows.test.js.",
+      "grade": "observed",
+      "phase": "testing",
+      "evidence": ["515fb4c", "147bcfd", "2b426c6", "7e6eca6", "1469048", "c15db8d3", "a3bc7fd", "9ec4fb8"],
+      "paths": ["tests/hooks.test.js", "tests/hooks-windows.test.js"]
+    }
+  ],
+  "risk_areas": [
+    { "path": "tests/hooks.test.js", "score": 1, "commits": 20, "fixes": 10, "fix_ratio": 0.50, "why": "the shared hook suite; everything lands here", "evidence": ["515fb4c", "53fd1e8", "988428d"] },
+    { "path": "hooks/ponytail-activate.js", "score": 2, "commits": 13, "fixes": 7, "fix_ratio": 0.54, "why": "session activation, BOM, EPIPE, config dir", "evidence": ["a3bc7db", "c308541", "795ec0e"] },
+    { "path": "pi-extension/index.js", "score": 3, "commits": 14, "fixes": 7, "fix_ratio": 0.50, "why": "theme access, fs writes, status bar render", "evidence": ["6165b70", "8555a0a", "c8b12b6"] },
+    { "path": "tests/hooks-windows.test.js", "score": 4, "commits": 7, "fixes": 6, "fix_ratio": 0.86, "why": "the Windows portability class", "evidence": ["515fb4c", "147bcfd", "2b426c6", "7e6eca6"] },
+    { "path": "hooks/ponytail-config.js", "score": 5, "commits": 10, "fixes": 6, "fix_ratio": 0.60, "why": "default-mode writes, config merging", "evidence": ["988428d", "8555a0a"] },
+    { "path": "scripts/uninstall.js", "score": 6, "commits": 5, "fixes": 4, "fix_ratio": 0.80, "why": "install/uninstall asymmetry", "evidence": ["25185a4", "40e50d9", "4286903a"] },
+    { "path": "tests/uninstall.test.js", "score": 7, "commits": 4, "fixes": 4, "fix_ratio": 1.00, "why": "every commit to this file was a fix", "evidence": ["ae24cd0b", "25185a4", "40e50d9"] }
+  ],
+  "risk_context": [
+    { "path": "README.md", "commits": 73, "note": "highest churn in the repo; contributor-facing, near-zero risk" },
+    { "path": "docs/agent-portability.md", "commits": 18, "fixes": 1, "note": "the adapter surface changes often" },
+    { "path": "manifest set (10 files)", "fixes": 0, "note": "not buggy individually; their count is the hazard" }
+  ],
+  "couplings": [
+    { "pair": ["hooks/ponytail-instructions.js", "tests/hooks.test.js"], "count": 10, "contract": "hook behaviour and its suite" },
+    { "pair": ["pi-extension/index.js", "pi-extension/test/extension.test.js"], "count": 10, "contract": "adapter and its suite" },
+    { "pair": ["hooks/ponytail-config.js", "tests/hooks.test.js"], "count": 10, "contract": "config writes and the shared suite" },
+    { "pair": [".opencode/plugins/ponytail.mjs", "tests/opencode-plugin.test.js"], "count": 9, "contract": "adapter and its suite" },
+    { "pair": ["pi-extension/index.js", "pi-extension/test/helpers.test.js"], "count": 8, "contract": "adapter and its helpers" },
+    { "pair": ["hooks/ponytail-activate.js", "tests/hooks.test.js"], "count": 8, "contract": "activation and the shared suite" }
+  ],
+  "coupling_note": "Every top coupling is implementation plus its own test. That is the strongest structural fact about this repository.",
+  "removed": [
+    { "what": "PR #82 (Modern Web Guidance rung-3)", "reason_quoted": "Revert #82 (Modern Web Guidance rung-3) and re-sync mirrors", "evidence": ["cf9cbd5"] },
+    { "what": "commandWindows in hooks.json", "reason_quoted": "drop commandWindows from hooks.json for Claude.ai marketplace validation", "evidence": ["cc37a5d"] },
+    { "what": "bash-only exec in hooks", "reason_quoted": "drop bash-only `exec` from hooks so they run under PowerShell", "evidence": ["2ba0262"] },
+    { "what": "examples/*.md (5 files)", "reason_quoted": null, "grade": "weak", "evidence": [] },
+    { "what": "release assets (announce-v4.3.0.png, ponytail-v4.3.0.gif, assets/benchmark-loc.svg)", "reason_quoted": null, "grade": "weak", "evidence": [] }
+  ],
+  "checklist": [
+    { "id": "PL-C1", "text": "Run npm install && npm test; all 15 test files plus both guard scripts must pass.", "evidence": [] },
+    { "id": "PL-C2", "text": "Read AGENTS.md and docs/agent-portability.md; they are the authoritative adapter rules.", "evidence": [] },
+    { "id": "PL-C3", "text": "Confirm a clean tree with git status --porcelain.", "evidence": [] },
+    { "id": "PL-C4", "text": "Reading/writing a file, spawning a process, or building a path: apply all four portability guards (BOM, shell quoting, interpreter resolution, CRLF).", "evidence": ["a3bc7db", "9ec4fb8", "2b426c6"] },
+    { "id": "PL-C5", "text": "Bumping a version: update all 10 manifests, then run node scripts/check-versions.js.", "evidence": ["763e04d"] },
+    { "id": "PL-C6", "text": "Adding a platform adapter: add its manifest to check-versions.js and to check-rule-copies.js in the same PR.", "evidence": ["7790c37", "83493b9"] },
+    { "id": "PL-C7", "text": "Editing AGENTS.md or a skill body: run node scripts/check-rule-copies.js and re-sync the mirrors.", "evidence": ["cf9cbd5"] },
+    { "id": "PL-C8", "text": "Touching install behaviour: change scripts/uninstall.js and tests/uninstall.test.js in the same PR.", "evidence": ["25185a4", "40e50d9"] },
+    { "id": "PL-C9", "text": "Every fix ships with the test that would have caught it; platform fixes go in tests/hooks-windows.test.js.", "evidence": ["515fb4c", "7e6eca6"] },
+    { "id": "PL-C10", "text": "Run all three CI commands locally: node scripts/check-rule-copies.js, node scripts/check-versions.js, npm test.", "evidence": [] },
+    { "id": "PL-C11", "text": "Do not merge a change that only edits one adapter's copy of a rule.", "evidence": ["cf9cbd5"] },
+    { "id": "PL-C12", "text": "Do not add a hardcoded interpreter name (python3, bash) or an unquoted absolute path.", "evidence": ["3869218", "147bcfd", "215777d"] }
+  ],
+  "analysis_notes": {
+    "coverage": "202 non-merge commits of 210; 100% of history; 2026-06-12 .. 2026-08-08; 68 contributor emails; top author 77 commits (37%)",
+    "excluded": ["*.md prose", "assets/", "benchmarks/*.json"],
+    "contradiction_found": "none; prior documents are accurate, but docs/agent-portability.md covers adapters while the actual defect class is platforms",
+    "commit_weighting": "not applied despite 80% squash-merge subjects; with 70 fix commits and 34% dev-loop subjects it would have shrunk the portability cluster below the reporting threshold",
+    "method_shift": "R1 (timing) produced 3 usable rows; R6 (topic) plus an explicit keyword probe produced the real finding",
+    "weak_signals": [
+      "examples/*.md and assets/* deletions have no explanatory commit.",
+      "The two R4 keyword hits ('missing', 'against') are lexical matches, not genuine repeats."
+    ],
+    "unknowns": [
+      "Whether a portability checklist exists somewhere this run did not search.",
+      "Why PR #82 was reverted.",
+      "Whether the 8 merge commits carried review discussion that would upgrade any [inferred] rule to [observed]."
+    ]
+  }
+}

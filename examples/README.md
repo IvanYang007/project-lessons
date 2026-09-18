@@ -1,15 +1,15 @@
 # Examples
 
-Two real outputs from running this skill, kept so a reader can calibrate what the
+Three real outputs from running this skill, kept so a reader can calibrate what the
 workflow produces before running it on their own repository.
 
-Both pass every blocking gate:
+All three pass every blocking gate:
 
 ```bash
-python scripts/check_output.py examples/papervault-PROJECT_LESSONS.md \
-  examples/papervault-project-lessons.json /path/to/papervault
-python scripts/check_output.py examples/countup-PROJECT_LESSONS.md \
-  examples/countup-project-lessons.json /path/to/countUp
+for r in papervault countup ponytail; do
+  python scripts/check_output.py examples/$r-PROJECT_LESSONS.md \
+    examples/$r-project-lessons.json /path/to/$r
+done
 ```
 
 ## Target 1 — papervault
@@ -73,6 +73,41 @@ either artifact.
 
 The Phase 2 secret scan also fired: `keystore/keystore-pass.txt` was committed in the
 initial commit `32f6f36`, deleted in `625f2c3`, and is still reachable on `origin/main`.
+
+## Target 3 — ponytail
+
+The upstream `DietrichGebert/ponytail` cross-agent skill package. 210 commits, **68
+contributor emails**, 8 weeks, 80% squash-merged pull requests. This is the only target
+with real multi-author review history, and it is where the method changed most.
+
+| File | What it is |
+| --- | --- |
+| `ponytail-recurrence.md` | Raw output of `scripts/recurrence.py`, including R6. |
+| `ponytail-PROJECT_LESSONS.md` | The finished artifact. |
+| `ponytail-project-lessons.json` | The machine-readable mirror. |
+
+What changed because of this target:
+
+- **Quick-remedy attribution stopped working.** Only 18 of 70 fixes could be attributed to
+  a recent commit, because a squash-merged fix answers an issue, not the merge that
+  introduced the problem. On the two single-author repos it placed 35 of 35.
+- **Topic clustering found the real recurrence.** R6 reported `windows` in 5 fixes. An
+  explicit keyword probe on the same history found **25 commits — 36% of all fixes** —
+  because the theme appeared as `windows`, `powershell`, `CRLF`, `portable`, `$env:`,
+  `USERPROFILE` and `python3` across different commits.
+- **A five-fix run at one timestamp was reported as a storm.** It was a rebase. Zero-span
+  runs are now labelled `batch`.
+
+The headline rules it produced:
+
+1. Cross-platform portability is the #1 recurring defect class. Seven sub-classes, none of
+   them written down anywhere: BOM in JSON (fixed twice, for two files), bash-only `exec`
+   under PowerShell, shell-unsafe paths, hardcoded `python3`, CRLF, stdin EOF deadlock.
+2. A pairwise manifest-agreement test cannot catch collective version drift — the
+   maintainers say so in `763e04d`, after the 4.8.0 release advertised three versions at
+   once. Pin an absolute version and compare it to the tag.
+3. Editing `AGENTS.md` breaks the adapter mirrors, which is why
+   `scripts/check-rule-copies.js` exists.
 
 ## Reproduce
 

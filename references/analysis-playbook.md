@@ -259,8 +259,41 @@ python scripts/recurrence.py .project-lessons-work/commits.txt \
   .project-lessons-work/test-touch.txt > .project-lessons-work/03-recurrence.md
 ```
 
-The script emits R1 (quick-remedy attribution), R2 (fix storms), R3 (fix-cluster
-files), R4 (repeat-admitting messages), R5 (fix + test), and a fix-ratio table.
+The script emits R1 (quick-remedy attribution), R2 (fix storms, with zero-span runs
+labelled `batch`), R3 (fix-cluster files), R4 (repeat-admitting messages), R5 (fix +
+test), R6 (recurrence by topic), and a fix-ratio table.
+
+### 3.2 Topic probes beat unigrams for themes spread across synonyms
+
+R6 clusters subject tokens. That finds lexically stable topics. It undersells a theme
+expressed with varied words.
+
+Worked example: on a 68-contributor repository, R6 reported `windows` in 5 fix commits.
+An explicit probe on the same history found **25 commits** (36% of all fixes), because
+the theme appeared as `windows`, `powershell`, `CRLF`, `portable`, `$env:`,
+`USERPROFILE` and `python3` across different commits. On the same repository, R1
+quick-remedy attribution could place only 18 of 70 fixes, because a squash-merged fix
+answers an issue, not the merge that introduced the problem.
+
+```bash
+# build the keyword set from symptoms you noticed in R3 and R5, then probe
+git log --oneline -i --grep='<symptom1>\|<symptom2>\|<symptom3>' | wc -l
+git log --oneline -i --grep='<symptom1>\|<symptom2>\|<symptom3>' | head -40
+```
+
+Run **both** and report both. If the probe finds far more than the unigram count, say so
+— that gap is itself the finding: the team has one problem expressed many ways.
+
+Seed probes for defect classes that are library-agnostic:
+
+| Class | Probe |
+| --- | --- |
+| Platform | `windows\|powershell\|cross-platform\|portable\|CRLF\|BOM\|USERPROFILE` |
+| Environment | `env\|config dir\|XDG\|HOME\|CI only\|local only\|works on my` |
+| Concurrency | `race\|deadlock\|hang\|freeze\|timeout\|flaky` |
+| Data | `migrat\|schema\|backfill\|corrupt\|orphan\|encoding` |
+| Dependency | `version\|drift\|align\|manifest\|lockfile` |
+| Shell | `exec\|spawn\|quoting\|path separator\|interpreter` |
 
 **Why R5 needs the second file.** Detecting tests by path alone misses colocated and
 inline tests - Rust `#[cfg(test)] mod tests`, Go `*_test.go` in the same package,
@@ -268,7 +301,7 @@ Python `def test_` inside a module, Jest `describe()` inside a component file. P
 the `-G` marker list fixes that. Validated on a Rust repo: path-only reported 0 of 35
 fix commits as test-touching; the diff marker found 7 of 35.
 
-### 3.1a Git `--grep` uses BRE, not ERE
+### 3.3 Git `--grep` uses BRE, not ERE
 
 `git log --grep` treats the pattern as basic regular expression, where `|` is a
 **literal** pipe. Two correct forms:
@@ -281,7 +314,7 @@ git log -E --grep='revert|drop|remove' -i      # or request extended regex
 `--grep='a|b'` silently matches the literal text `a|b` and returns nothing. `-G` and
 `-S` behave the same way.
 
-### 3.2 Thresholds
+### 3.4 Thresholds
 
 | Signal | Threshold | Why |
 | --- | --- | --- |
@@ -293,7 +326,7 @@ git log -E --grep='revert|drop|remove' -i      # or request extended regex
 Tune the window for the project: a repo with one commit a week needs a wider window.
 State the window you used in the output.
 
-### 3.3 Manual reading of R4 hits
+### 3.5 Manual reading of R4 hits
 
 For each repeat-admitting fix:
 
@@ -306,7 +339,7 @@ git log -1 --format=%s $(git log --format=%H -1 --before=<date> -- <file>)   # w
 Answer only one question: **what did the author know the second time that they did not
 know the first time?** Write that as the rule.
 
-### 3.4 Recurrence by symptom, not by file
+### 3.6 Recurrence by symptom, not by file
 
 A recurring *class* of bug matters more than the same file twice. Group R1 and R4 hits
 by symptom words in the message — `ordering`, `null`, `timeout`, `race`, `cache`,

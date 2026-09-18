@@ -10,10 +10,13 @@ Reads a pre-generated git log dump so it stays read-only, offline, and dependenc
 Signals:
   R1 quick-remedy attribution  each fix attributed to the nearest earlier non-fix
                                commit it shares a file with, inside WINDOW_HOURS
-  R2 fix storms                runs of consecutive fix commits (a review burst)
+  R2 fix storms                runs of consecutive fix commits (a review burst);
+                               zero-span runs are labelled as batch imports
   R3 fix-cluster files         files touched by >= MIN_FIXES fix commits
   R4 repeat-admitting messages fix subjects that say "again", "still", "regression"
   R5 fix plus test             fix commits that also rewrite a test
+  R6 recurrence by topic       the noun the fixes keep returning to; the only signal
+                               that survives multi-author, PR-driven history
   risk table                   fix ratio per file
 
 Why attribution and not pairing: on a repo with a burst of fixes, every fix is inside
@@ -32,10 +35,22 @@ MIN_FIXES = 3
 MIN_STORM = 5
 MAX_ROWS = 25
 
+# Topic clustering (R6). Stopwords are fix-vocabulary, not English-only: the point is to
+# surface the NOUN a fix keeps returning to (windows, uninstall, statusline), not the verb
+# every fix already shares.
+TOPIC_STOP = set("""
+fix fixes fixed fixing the a an and or for in on to of with from when not no use used
+using add adds added make makes made before after only also dont don't that this it its
+is are was were be been being has have had do does did can could should would via by at
+as into out up over under more less than then still revert reverted docs doc test tests
+which while without within properly correctly just now new missing
+""".split())
+MAX_TOPICS = 25
+
 FIX_RE = re.compile(r"^(fix|bugfix|hotfix)\b", re.I)
 REPEAT_RE = re.compile(
-    r"\b(again|still|same|also|forgot|forgotten|missing|regression|"
-    r"once more|second time|repeat|reoccur|back to)\b",
+    r"\b(again|still|same|forgot|forgotten|regression|once more|second time|"
+    r"repeat|reoccur|back to)\b",
     re.I,
 )
 TEST_RE = re.compile(r"(^|/)(tests?|spec|__tests__)/|(test_|_test|\.test\.|\.spec\.)", re.I)
@@ -170,6 +185,9 @@ def r2_fix_storms(w, commits, fixes):
     w("A run of fixes with no intervening feature or refactor commit. The work landed")
     w("before it was ready. Ask what review or test step was skipped.")
     w("")
+    w("A run whose span is ~0h is NOT a storm: it is a rebase, a squash import or a batch")
+    w("landing. Those are labelled `batch` and carry no process signal.")
+    w("")
     runs = []
     run = []
     for c in commits:
@@ -187,10 +205,63 @@ def r2_fix_storms(w, commits, fixes):
         return
     for run in runs:
         span = (run[-1]["ts"] - run[0]["ts"]) / 3600
+        if span < 0.1:
+            w(f"- **{len(run)} consecutive fixes, batch** (span {span:.2f}h, so this is a"
+              f" rewrite or import, not a storm): `{run[0]['sha'][:9]}` .. "
+              f"`{run[-1]['sha'][:9]}`")
+            continue
         w(f"- **{len(run)} consecutive fixes** over {span:.1f}h: "
           f"`{run[0]['sha'][:9]}` .. `{run[-1]['sha'][:9]}` ({when(run[0]['ts'])})")
         w(f"  - first: {run[0]['subj'][:78]}")
         w(f"  - last:  {run[-1]['subj'][:78]}")
+    w("")
+
+
+def r6_topics(w, fixes):
+    """The recurrence signal that survives multi-author, PR-driven history.
+
+    Quick-remedy attribution (R1) needs one author editing in a loop. In a PR-driven
+    repository a fix answers an issue, not a recent commit, so R1 goes quiet. What still
+    works is counting the NOUN that the fixes keep returning to.
+    """
+    w("## R6 - Recurrence by topic (what the fixes keep coming back to)")
+    w("")
+    w("Counts a subject token across DISTINCT fix commits. This is the signal that still")
+    w("works when the repository is multi-author and PR-driven and R1 goes quiet.")
+    w("")
+    if not fixes:
+        w("No fix commits.")
+        w("")
+        return
+    per_commit = defaultdict(set)
+    for c in fixes:
+        for tok in re.split(r"[^a-z0-9+#]+", c["subj"].lower()):
+            if len(tok) >= 3 and tok not in TOPIC_STOP:
+                per_commit[tok].add(c["sha"])
+    topics = sorted(
+        ((tok, shas) for tok, shas in per_commit.items() if len(shas) >= 3),
+        key=lambda kv: (-len(kv[1]), kv[0]),
+    )
+    if not topics:
+        w("No token appears in 3 or more distinct fix commits.")
+        w("")
+        return
+    by_sha = {c["sha"]: c for c in fixes}
+    w("| fix commits | topic | earliest fix |")
+    w("| --- | --- | --- |")
+    for tok, shas in topics[:MAX_TOPICS]:
+        earliest = min(shas, key=lambda s: by_sha[s]["ts"])
+        c = by_sha[earliest]
+        w(f"| {len(shas)} | `{tok}` | `{earliest[:9]}` {c['subj'][:52]} |")
+    w("")
+    w("Read the top cluster end to end. A topic in 5+ fixes is one lesson, not five bugs.")
+    w("")
+    top = topics[0][0]
+    w(f"### Every fix commit mentioning `{top}`")
+    w("")
+    for sha in sorted(per_commit[top], key=lambda s: by_sha[s]["ts"]):
+        c = by_sha[sha]
+        w(f"- `{sha[:9]}` {when(c['ts'])} {c['subj'][:78]}")
     w("")
 
 
@@ -315,6 +386,7 @@ def main():
     r3_fix_clusters(w, fixes)
     r4_repeats(w, fixes)
     r5_fix_plus_test(w, fixes, test_touch)
+    r6_topics(w, fixes)
     risk_table(w, commits, fixes)
     print("\n".join(out))
 

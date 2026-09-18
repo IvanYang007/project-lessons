@@ -256,7 +256,8 @@ quoted author beats a paraphrase.
 
 ### Phase 3 — Recurrence: the mistakes this repo made twice
 
-This is what separates a lessons document from a changelog. Four mechanical signals.
+This is what separates a lessons document from a changelog. Six signals, numbered to
+match `scripts/recurrence.py` exactly.
 
 **R1 — Quick-remedy attribution.** A `fix:` commit inside 72 hours of an earlier commit
 that touched one of the same files means the earlier change omitted something.
@@ -269,15 +270,19 @@ of fixes, every fix sits inside the window of every other fix and pairwise outpu
 collapses into one meaningless transitive cluster. Grouping by the earlier commit keeps
 one row per story: *this commit needed six follow-up fixes*.
 
-**R2 — Repeated-removal paths.** A path added and deleted more than once.
+Only rows with **two or more** follow-up fixes are reported. A commit that drew exactly
+one is ordinary course-correction.
 
-```bash
-# count deletion commits per path
-git log --pretty=format:"C%H" --name-only --diff-filter=D | grep -v '^C' | grep -v '^$' \
-  | sort | uniq -c | sort -rn | head -20
-```
+**R1 fails on multi-author, PR-driven repositories.** Validated on a 68-contributor
+project: 52 of 70 fixes could not be attributed to any recent commit, because a
+squash-merged fix answers an *issue*, not the merge that introduced the problem. When R1
+goes quiet on a repository with real review history, that is the finding — switch to R6.
 
-Any path in two or more deletion commits oscillated. Read both arcs.
+**R2 — Fix storms.** Consecutive fix commits with no intervening feature or refactor
+commit. The work landed before it was ready; ask what review or test step was skipped.
+
+A run whose span is ~0h is not a storm: it is a rebase, a squash import or a batch
+landing, and it carries no process signal. The script labels those `batch`.
 
 **R3 — Fix-cluster files.** One file with three or more `fix:` commits. This is the
 single best predictor of "this will break again".
@@ -289,31 +294,47 @@ git log --oneline --grep='^fix\|^bugfix\|^hotfix' -i --name-only \
 
 Remember that `--grep` is BRE: escape the alternation, or pass `-E` before `--grep`.
 
-**R4 — Same-bug-again text.** Fix commits that admit a repeat. This is a True
-recurrence, not a guess.
+**R4 — Same-bug-again text.** Fix commits that admit a repeat. Read every hit, then
+answer: *what did the author know the second time that they did not know the first
+time?* That answer is the lesson. Write it as an imperative rule.
 
-```bash
-git log --format="%h %cI %s" -i --grep='again\|still\|same\|also\|forgot\|missing\|regression\|back to\|once more\|second time\|reoccur\|repeat' | head -60
-```
-
-For every hit, read the diff and answer: *what did the author know the second time
-that they did not know the first time?* That answer is the lesson. Write it as an
-imperative rule.
+Expect false positives. `missing` and `also` were removed from the pattern because they
+matched "ship the missing feature" and "also fix X" — lexical, not a repeat. Treat a
+lone hit as `[weak]`.
 
 **R5 — Fix commits that also change test code.** The test did not exist, or asserted
-the wrong thing. This is a testing-strategy lesson. Detecting tests by path alone
-misses colocated and inline tests, so pass the diff-marker list as well.
+the wrong thing. This is a testing-strategy lesson, and the ratio is a testing-culture
+measurement: 16 of 35 in one repo, 42 of 70 in a well-tested one, 0 of 35 in a repo
+whose tests were all `#[cfg(test)]` modules the path detector could not see.
+
+Detecting tests by path alone misses colocated and inline tests, so pass the diff-marker
+list as well. Never report a "no tests" conclusion from the file-path detector alone.
+
+**R6 — Recurrence by topic.** Count the NOUN the fixes keep returning to. This is the
+signal that survives multi-author, PR-driven history, where R1 does not.
 
 ```bash
-git log -G'#\[test\]|#\[cfg\(test\)\]|def test_|describe\(|it\(' --format=%H > .project-lessons-work/test-touch.txt
-# then: python scripts/recurrence.py commits.txt test-touch.txt
+# unigrams: finds the lexically stable clusters (script R6)
+# explicit keyword probe: finds a theme spread across synonyms
+# POSIX
+git log --oneline -i --grep='windows\|powershell\|cross-platform\|portable\|CRLF\|BOM'
 ```
 
-Validated on a Rust repo with inline `#[cfg(test)]` modules: path-only detection
-reported 0 of 35 fix commits; the diff marker found 7 of 35. Never report a
-"no tests" conclusion from the file-path detector alone.
+**Both are needed.** On a 68-contributor project, unigram clustering reported `windows`
+in 5 fixes. An explicit probe on the same history found **25 commits** — 36% of all
+fixes — because the theme was expressed as `windows`, `powershell`, `CRLF`, `portable`,
+`$env:`, `USERPROFILE` and `python3` in different commits.
 
-The recurrence script implements R1-R5 plus the fix-ratio table:
+Build the keyword set from the symptoms you notice while reading R3 and R5, not from a
+generic list. The clusters that matter are the ones specific to this repository.
+
+Do not report the repository's own name as a topic. Every path contains it, so it will
+rank first and mean nothing.
+
+**Repeated-removal paths** (a path added and deleted more than once) belong to Phase 2,
+not here: `git log --pretty=format:"C%H" --name-only --diff-filter=D | grep -v '^C'`.
+
+Run the whole set:
 
 ```bash
 git log --no-merges --format="C%H|%ct|%s" --name-only > .project-lessons-work/commits.txt
