@@ -115,14 +115,24 @@ def r1_attribution(w, commits, fixes):
 
     by_sha = {c["sha"]: c for c in commits}
     rows = sorted(repairs.items(), key=lambda kv: (-len(kv[1]), by_sha[kv[0]]["ts"]))
+    strong = [(sha, items) for sha, items in rows if len(items) >= 2]
+    singles = len(rows) - len(strong)
     if not rows:
         w("No fix was attributable to an earlier non-fix commit. The history has no")
         w("'landed a change, then repaired it' pattern.")
         w("")
         return
+    w("Only commits that drew TWO OR MORE follow-up fixes are listed. A commit that drew")
+    w("exactly one is ordinary course-correction, not a signal.")
+    w("")
+    if not strong:
+        w(f"No commit drew 2 or more follow-up fixes. {singles} commits drew exactly one, "
+          "so there is no quick-remedy signal in this history.")
+        w("")
+        return
     w("| follow-up fixes | earlier commit | span (h) | most-shared files |")
     w("| --- | --- | --- | --- |")
-    for sha, items in rows[:MAX_ROWS]:
+    for sha, items in strong[:MAX_ROWS]:
         a = by_sha[sha]
         hours = sorted((b["ts"] - a["ts"]) / 3600 for b, _ in items)
         span = f"{hours[0]:.1f}" if len(hours) == 1 else f"{hours[0]:.1f}-{hours[-1]:.1f}"
@@ -132,9 +142,11 @@ def r1_attribution(w, commits, fixes):
         top = ", ".join(f"`{p}`" for p, _ in hot.most_common(4))
         w(f"| {len(items)} | `{sha[:9]}` {a['subj'][:52]} | {span} | {top} |")
     w("")
+    w(f"{singles} further commits drew exactly one follow-up fix (not listed).")
+    w("")
     w("### The fixes behind the worst offenders")
     w("")
-    for sha, items in rows[:8]:
+    for sha, items in strong[:8]:
         a = by_sha[sha]
         w(f"- `{sha[:9]}` {when(a['ts'])} {a['subj'][:80]}")
         for b, _ in items[:10]:

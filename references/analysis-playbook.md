@@ -40,6 +40,33 @@ If a `PROJECT_LESSONS.md` exists, this is a refresh. Read its recorded head sha 
 
 ---
 
+## 0.2 Prior documentation
+
+Run this before any synthesis. A repo that already documents its own decisions and
+recurring faults will otherwise be duplicated, and the copy will drift.
+
+```bash
+git ls-files | rg -i 'recurring|known.?issues|lessons|troubleshoot|postmortem|decisions?\.md|code.?review|threat|invariants|contributing|architecture|security'
+git ls-files -- '*/adr/*' '*/decisions/*' '.scratch/*' '*/issues/*'
+```
+
+Also check the default agent-instruction files, which are often the densest prior source:
+
+```bash
+ls -a | rg -i 'agents\.md|claude\.md|gemini\.md|cursorrules|windsurfrules|copilot-instructions'
+```
+
+For each file found, record: what it claims, which claim has a commit behind it, which
+claim the history contradicts, and which claim a later commit made stale.
+
+A worked example of why this matters: `countUp` carried `docs/RECURRING_ISSUES.md` with
+10 documented defects, their root causes, hard invariants, and a 12-item pre-commit
+checklist. The correct output for that repo cites that document, grades each of its
+claims against the history, and reports the one claim the history contradicts — not a
+fresh 300-line rewrite of it.
+
+---
+
 ## 1. Survey
 
 ### 1.1 Commit subjects (used many times later)
@@ -98,6 +125,48 @@ git log --merges --oneline | head -10                         # PR workflow?
 ---
 
 ## 2. Removals and abandoned work
+
+### 2.0 Committed secrets (run this first)
+
+A deleted credential is still in the packfile. Deleting a file in a later commit does not
+remove it from history; only `git filter-repo` or a fresh repository does.
+
+```bash
+# every path ever ADDED, filtered to secret-shaped names
+git log --pretty=format: --diff-filter=A --name-only \
+  | rg -v '^$' | sort -u \
+  | rg -i 'passw|secret|credential|\.env|token|apikey|api[_-]?key|\.pem|\.jks|\.keystore|id_rsa|\.pfx|key\.txt'
+```
+
+For each hit:
+
+```bash
+git log --all --oneline -- "<path>"                    # added, then removed
+git rev-list --all --objects | rg --fixed-strings "<path>"   # still reachable?
+git remote -v                                          # any remote to leak to?
+```
+
+Record path, adding commit, removing commit, reachability, and remote presence.
+**Never read or print the value.** Read the commit only far enough to confirm it exists.
+
+Report template:
+
+```
+CREDENTIAL IN HISTORY
+  path:            keystore/keystore-pass.txt
+  added:           32f6f36   (initial commit)
+  removed:         625f2c3   (later commit; file no longer in tree)
+  still reachable: yes - blob present in `git rev-list --all --objects`
+  remote:          none configured, so not yet exposed
+  action:          rotate the credential, then purge history before any public push
+```
+
+Never attempt the purge yourself. That is the owner's decision, and a botched
+`filter-repo` run destroys the repository.
+
+**Note:** a committed keystore is not always an active exposure. Check whether the file
+still exists in the tree, whether `.gitignore` covers it, and whether a remote exists.
+All three answers belong in the report.
 
 ### 2.1 Every deleted path, by deletion count
 
@@ -378,6 +447,20 @@ git show $(git log -1 --format=%H -- '*test*') --stat
 ```
 
 And check whether fixes ship with tests, from Phase 3 R5.
+
+**Invariant tests.** The strongest portable testing pattern found in the field: a test
+that reads a configuration file and asserts a required value. It converts a written rule
+into a red build.
+
+```bash
+rg -n 'readText\(\)|getResourceAsStream|read_to_string|open\(.*\.xml|readFileSync' --glob '*test*' --glob '*Test*' --glob '*spec*'
+```
+
+When found, name the file and the invariants it locks, and make "add the invariant to
+that test" a checklist item. Example: `WidgetContractInvariantsTest` asserted
+`resizeMode="none"`, the presence of `reconfigurable`, the absence of
+`configuration_optional`, and a corner radius cap — every one of which was a recurring
+OEM-launcher defect.
 
 ### 5.6 GitHub "why" — optional, high value
 

@@ -100,7 +100,8 @@ references/analysis-playbook.md  full command reference per signal
 references/evidence-grading.md   how to grade, and how to scrub secrets
 references/prior-art.md          evaluation of the tools and papers below
 scripts/recurrence.py          dependency-free R1-R5 detector
-examples/                      a real generated artifact, for calibration
+scripts/check_output.py        enforces the Phase 7 BLOCKING gates
+examples/                      two real generated artifacts, for calibration
 ```
 
 ## Install
@@ -160,20 +161,38 @@ What is new here: the recurrence layer. The prior tools collect decisions, landm
 and hotspots. None of them systematically find a mistake the project made **more than
 once**, which is the one class of lesson an agent most needs to not repeat.
 
+## Validation
+
+Run end to end on two real repositories with different shapes. Both artifacts pass every
+blocking gate in `scripts/check_output.py`.
+
+| Repo | Shape | What it exercised |
+| --- | --- | --- |
+| [papervault](examples/papervault-PROJECT_LESSONS.md) | 66 commits, 1 author, 23 hours, Rust | fix storms, quick-remedy attribution, the inline-test detection bug |
+| [CountUp-Android](examples/countup-PROJECT_LESSONS.md) | 176 commits, 1 author, 4 weeks, Android | removals, prior-document cross-check, committed-secret scan, coupling |
+
+Six defects were found and fixed by that validation:
+
+1. Quick-remedy pairing flooded on a burst-fix repo, because every fix sat inside the
+   window of every other fix. Replaced with attribution to the nearest earlier non-fix
+   commit.
+2. Test detection by file path reported "0 of 35 fixes touched tests" on a Rust repo that
+   keeps its tests inline. A `git log -G` diff marker found 7 of 35.
+3. The R1 table's long tail of single-fix rows buried the signal. Rows now require two or
+   more follow-up fixes.
+4. Nothing probed for a repository that already documents its own recurring faults.
+   CountUp carried `docs/RECURRING_ISSUES.md` with 10 defects and a 12-item checklist.
+   Phase 0.2 now finds those documents and forbids duplicating them.
+5. Nothing scanned for secrets that were deleted but remain in history. CountUp still has
+   a keystore password in its pushed history.
+6. Nothing enforced the BLOCKING gates. `scripts/check_output.py` now does, and it
+   immediately caught two gate failures in the papervault artifact.
+
 ## Status
 
-Working. Validated end to end on a real repository:
-[`examples/papervault-PROJECT_LESSONS.md`](examples/papervault-PROJECT_LESSONS.md) was
-produced from a 66-commit Rust repo. The mechanical pass found 35 fix commits, three
-fix storms, and the single commit in that history whose message admits a repeat.
-
-Two defects were found and fixed during that validation:
-
-- Quick-remedy pairing flooded with noise on a burst-fix repo, because every fix sat
-  inside the window of every other fix. Replaced with attribution to the nearest earlier
-  non-fix commit.
-- Test detection by file path reported "0 of 35 fixes touched tests" on a Rust repo that
-  keeps its tests inline. Adding a `git log -G` diff marker found 7 of 35.
+Working. The skill, its references, the recurrence detector, and the gate checker are all
+in place. What is still missing is a repository with multi-author history and a large
+history over months; both validated repos are single-author.
 
 ## License
 

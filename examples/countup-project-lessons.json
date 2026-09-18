@@ -1,0 +1,159 @@
+{
+  "schema": "project-lessons/v1",
+  "repository": "CountUp-Android",
+  "scope": "repository",
+  "generated_from": {
+    "head": "HEAD",
+    "first": "32f6f36",
+    "commits_analyzed": 176,
+    "date_range": ["2026-08-20T23:11:42-04:00", "2026-09-16T07:47:58-04:00"],
+    "fix_commits": 35,
+    "fix_ratio": 0.19
+  },
+  "prior_documents": [
+    { "path": "docs/RECURRING_ISSUES.md", "claims": 10, "used_as": "cited, not duplicated", "contradictions_found": 0 },
+    { "path": "docs/CREDENTIAL_ROTATION.md", "used_as": "cited" },
+    { "path": ".scratch/codebase-hardening/issues/04-keystore-password-scrub.md", "used_as": "cited; open" },
+    { "path": "docs/CODE_REVIEW_2026-09-13.md", "used_as": "cited" }
+  ],
+  "security_findings": [
+    {
+      "id": "PL-SEC1",
+      "path": "keystore/keystore-pass.txt",
+      "added": "32f6f36",
+      "removed": "625f2c3",
+      "still_reachable": true,
+      "pushed_to_remote": "origin/main (IvanYang007/CountUp-Android, private)",
+      "value_quoted": false,
+      "action": "rotate the release signing key, then purge history with git-filter-repo before any public push",
+      "severity": "high"
+    }
+  ],
+  "rules": [
+    {
+      "id": "PL-001",
+      "text": "A written rule is not enforcement. When docs/RECURRING_ISSUES.md gains a hard invariant, add the matching assertion to WidgetContractInvariantsTest in the same commit.",
+      "grade": "observed",
+      "phase": "recurrence",
+      "evidence": ["1cd6e29", "a374749", "471e4cc", "2c48806", "433f1d4", "f03baa6"],
+      "paths": ["docs/RECURRING_ISSUES.md", "app/src/test/java/com/countup/app/WidgetContractInvariantsTest.kt"]
+    },
+    {
+      "id": "PL-002",
+      "text": "The authoritative source for widget XML invariants is WidgetContractInvariantsTest, not the XML comment. Assert both resizeMode and widgetFeatures when you touch either.",
+      "grade": "observed",
+      "phase": "conventions",
+      "evidence": ["1cd6e29", "433f1d4"],
+      "paths": ["app/src/main/res/xml/zen_pebble_widget_info.xml"]
+    },
+    {
+      "id": "PL-003",
+      "text": "Adding a user-facing string means adding it to all six locale files: values/, values-zh/, values-zh-rCN/, values-zh-rHK/, values-zh-rTW/, values-b+zh+Hant/.",
+      "grade": "inferred",
+      "phase": "coupling",
+      "evidence": ["b44ae72"],
+      "paths": ["app/src/main/res/values/strings.xml", "app/src/main/res/values-zh/strings.xml", "app/src/main/res/xml/locales_config.xml"]
+    },
+    {
+      "id": "PL-004",
+      "text": "Route widget commands through CountUpContract or WidgetNavigationContract. Never call a sibling receiver's pending-intent helper directly, and never merge the four receivers into one.",
+      "grade": "observed",
+      "phase": "coupling",
+      "evidence": ["d16e8b6", "146c008"],
+      "paths": ["app/src/main/java/com/countup/app/CountUpContract.kt", "app/src/main/java/com/countup/app/WidgetNavigationContract.kt"]
+    },
+    {
+      "id": "PL-005",
+      "text": "A release commit is not bookkeeping. Run ./gradlew assembleRelease and install the release APK before tagging, not after.",
+      "grade": "inferred",
+      "phase": "recurrence",
+      "evidence": ["7b1c9c3", "625f2c3", "edafee3a", "662675d", "06eb24c", "1cd6e29"],
+      "paths": ["app/build.gradle.kts", ".github/workflows/ci.yml"]
+    },
+    {
+      "id": "PL-006",
+      "text": "Do not resurrect a 1x1 Hero layout. It was removed twice, the second time as an explicit product decision.",
+      "grade": "observed",
+      "phase": "removals",
+      "evidence": ["ca2d64b", "2214b71", "4bb85ca", "eca8720", "20cd267"],
+      "paths": ["app/src/main/res/layout/countup_hero_widget_1x1.xml"]
+    },
+    {
+      "id": "PL-007",
+      "text": "One widget family per commit. The manifest, provider XML, receiver, configure activity and layout are five testable units, not one.",
+      "grade": "inferred",
+      "phase": "recurrence",
+      "evidence": ["227b2f37", "3c86632", "82e9024", "8c6329f", "15cdb44"],
+      "paths": []
+    },
+    {
+      "id": "PL-008",
+      "text": "Change CountUpViewModel.kt and CountUpViewModelTest.kt together; the project expects a fix to ship with its test change.",
+      "grade": "observed",
+      "phase": "testing",
+      "evidence": ["a129cf0", "5522dec2", "edafee3a", "bfc92b5", "a3230034", "82e9024"],
+      "paths": ["app/src/main/java/com/countup/app/CountUpViewModel.kt", "app/src/test/java/com/countup/app/CountUpViewModelTest.kt"]
+    },
+    {
+      "id": "PL-009",
+      "text": "Never add android.permission.RECORD_AUDIO or any microphone permission; speech is delegated out-of-process and needs <queries> entries instead.",
+      "grade": "observed",
+      "phase": "conventions",
+      "evidence": ["92262bb", "2c1261d"],
+      "paths": ["app/src/main/AndroidManifest.xml"]
+    }
+  ],
+  "risk_areas": [
+    { "path": "app/build.gradle.kts", "score": 1, "commits": 44, "fixes": 9, "why": "release plumbing, signing and R8 settings", "evidence": ["7b1c9c3", "662675d"] },
+    { "path": "app/src/main/java/com/countup/app/CountUpContent.kt", "score": 2, "commits": 42, "fixes": 12, "why": "heaviest fix count in the repo", "evidence": ["45dd6e1", "7208445"] },
+    { "path": "app/src/main/res/xml/zen_pebble_widget_info.xml", "score": 3, "commits": 8, "fixes": 7, "fix_ratio": 0.88, "why": "OEM launcher invariants, written down but unenforced until 433f1d4", "evidence": ["1cd6e29", "433f1d4", "06eb24c", "b6b4ce0"] },
+    { "path": "app/src/main/java/com/countup/app/HeroWidgetReceiver.kt", "score": 4, "commits": 32, "fixes": 5, "why": "duplicated navigation logic", "evidence": ["d16e8b6", "146c008"] },
+    { "path": "app/src/main/java/com/countup/app/CountUpStore.kt", "score": 5, "commits": 26, "fixes": 4, "why": "JSON store and orphaned widget bindings", "evidence": ["c678dd3", "625f2c3"] },
+    { "path": "app/src/main/AndroidManifest.xml", "score": 6, "commits": 21, "fixes": 4, "why": "provider removal, queries, permissions", "evidence": ["92262bb", "2c1261d"] },
+    { "path": "app/src/main/java/com/countup/app/CountUpViewModel.kt", "score": 7, "commits": 20, "fixes": 4, "why": "state transitions; must move with its test", "evidence": ["5522dec2", "edafee3a"] }
+  ],
+  "couplings": [
+    { "pair": ["app/src/main/res/values/strings.xml", "app/src/main/res/values-zh/strings.xml"], "count": 36, "contract": "localization: every string lands in six locale files" },
+    { "pair": ["app/src/main/java/com/countup/app/CountUpContent.kt", "app/src/main/res/values/strings.xml"], "count": 27, "contract": "UI text is user-facing text" },
+    { "pair": ["app/src/main/java/com/countup/app/CountUpContent.kt", "app/src/test/java/com/countup/app/CountUpViewModelTest.kt"], "count": 18, "contract": "UI change implies test change" },
+    { "pair": ["app/src/main/java/com/countup/app/CountUpContent.kt", "app/src/main/java/com/countup/app/CountUpViewModel.kt"], "count": 18, "contract": "view and state move together" },
+    { "pair": ["app/src/main/java/com/countup/app/HeroWidgetReceiver.kt", "app/src/main/java/com/countup/app/ZenHorizonWidgetReceiver.kt"], "count": 12, "contract": "widget family duplication" },
+    { "pair": ["app/src/main/java/com/countup/app/SolarRhythmWidget.kt", "app/src/main/java/com/countup/app/ZenPebbleWidgetReceiver.kt"], "count": 11, "contract": "widget family duplication" },
+    { "pair": ["app/src/main/java/com/countup/app/CountUpItem.kt", "app/src/main/java/com/countup/app/CountUpStore.kt"], "count": 10, "contract": "model and persistence" }
+  ],
+  "removed": [
+    { "what": "keystore/keystore-pass.txt", "reason_quoted": "fix(security,ui): harden credentials, concurrency, widget receivers", "still_in_history": true, "evidence": ["32f6f36", "625f2c3"] },
+    { "what": "countup_hero_widget_1x1.xml", "reason_quoted": "make 2x1 wide card the exclusive default and only layout for Hero widget", "evidence": ["20cd267"] },
+    { "what": "configuration_optional in widgetFeatures", "reason_quoted": "restore auto-launch picker for 1x1 Zen Pebble by removing configuration_optional", "evidence": ["433f1d4"] },
+    { "what": "icon drawables (7 files)", "reason_quoted": null, "grade": "weak", "evidence": [] },
+    { "what": "values/plurals.xml and values-zh/plurals.xml", "reason_quoted": null, "grade": "weak", "evidence": [] }
+  ],
+  "checklist": [
+    { "id": "PL-C1", "text": "Run ./gradlew testDebugUnitTest; 402 unit and contract tests must pass before you start.", "evidence": [] },
+    { "id": "PL-C2", "text": "Read docs/RECURRING_ISSUES.md; it is the authoritative widget defect list.", "evidence": ["a374749"] },
+    { "id": "PL-C3", "text": "Confirm a clean tree with git status --porcelain.", "evidence": [] },
+    { "id": "PL-C4", "text": "Touching resizeMode or widgetFeatures: assert both invariants, not only the one you are fixing.", "evidence": ["1cd6e29"] },
+    { "id": "PL-C5", "text": "Adding a user-facing string: add it to all six locale files.", "evidence": ["b44ae72"] },
+    { "id": "PL-C6", "text": "Touching one widget receiver: check its siblings and route commands through CountUpContract or WidgetNavigationContract.", "evidence": ["d16e8b6", "146c008"] },
+    { "id": "PL-C7", "text": "Touching CountUpViewModel.kt: change CountUpViewModelTest.kt too.", "evidence": ["5522dec2"] },
+    { "id": "PL-C8", "text": "Adding an invariant to docs/RECURRING_ISSUES.md: add the assertion to WidgetContractInvariantsTest in the same commit.", "evidence": ["433f1d4"] },
+    { "id": "PL-C9", "text": "One widget family per commit; do not land a whole suite.", "evidence": ["227b2f37"] },
+    { "id": "PL-C10", "text": "Run both ./gradlew testDebugUnitTest and ./gradlew assembleRelease; debug-only verification has missed R8 breakage here.", "evidence": [] },
+    { "id": "PL-C11", "text": "Never commit anything under keystore/, and do not make this repository public until history is scrubbed and the release key rotated.", "evidence": ["32f6f36", "625f2c3"] },
+    { "id": "PL-C12", "text": "Do not add android.permission.RECORD_AUDIO or any microphone permission.", "evidence": ["92262bb"] }
+  ],
+  "analysis_notes": {
+    "coverage": "176 commits, 100% of history, 2026-08-20 .. 2026-09-16, one author",
+    "prior_documents": "found and cited; no contradictions with history, but timing shows the doc was written while already violated",
+    "excluded": ["*.md", "app/build/", "playstore_package/*.png"],
+    "weak_signals": [
+      "Removed icon and plurals files have no explanatory commit.",
+      "Only one direct revert exists (cb21440); everything else was forward-fixed."
+    ],
+    "unknowns": [
+      "Whether the release signing key was rotated after 625f2c3.",
+      "Whether the two fix(review) bursts came from a human or an automated reviewer."
+    ],
+    "counter_evidence": "Fix density is low (19%) and fixes usually ship with tests (16 of 35). The recurring-fault problem here is configuration drift in XML and manifests, not missing tests."
+  }
+}

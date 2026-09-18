@@ -117,7 +117,9 @@ your first edit to `src/app.rs`, `src/preview/pdf_render.rs`, or
 - **Evidence:** 33 of 66 commits touch `src/app.rs`; 22 of those are fixes (ratio
   0.67). Couplings: `app.rs + main.rs` 12, `app.rs + tags/store.rs` 11,
   `app.rs + indexer/pipeline.rs` 11, `app.rs + search/engine.rs` 10,
-  `app.rs + preview/pdf_render.rs` 9.
+  `app.rs + preview/pdf_render.rs` 9. Representative fixes: `2313209` "browse_file
+  should not overwrite search_results", `097aaab` "unicode safety, render identity,
+  selection, progress".
 - **Falsifier:** if a later commit shows `app.rs` changes that do not ripple, the
   "no boundary" reading is wrong.
 - **The rule:** put new state and new event handling in the module that owns the data
@@ -225,22 +227,22 @@ subsystem settled before the last commit.
   preview, because all three are read from the same struct.
 - **Guard:** `097aaab` "fix: correctness fixes — unicode safety, render identity,
   selection, progress" is the shape of the failure. Add a test for the state transition
-  you touch.
-- **Evidence:** 22 fix commits; `2313209` "fix: browse_file should not overwrite
-  search_results".
+  you touch. See L7.
 
 ### Change couplings — files that must move together
 
 | Pair | Co-changes | Reading |
 | --- | --- | --- |
-| `src/app.rs` + `src/main.rs` | 12 | mechanical: `main.rs` wires `app.rs`. Informational only. |
 | `src/app.rs` + `src/tags/store.rs` | 11 | real: tag UI and tag store change together |
 | `src/app.rs` + `src/indexer/pipeline.rs` | 11 | real: progress reporting is split across both |
 | `src/indexer/extractors/pdf.rs` + `src/preview/pdf_render.rs` | 7 | real: the two PDF paths must agree on file handling |
 | `src/main.rs` + `src/watcher/watcher.rs` | 6 | real: shutdown wiring (L3) |
 
-The `app.rs` pairs are the symptom in L7, not a contract to preserve. The last three
-rows are contracts: touch one side and check the other.
+Five further pairs are `src/app.rs` against `src/main.rs` (12),
+`src/search/engine.rs` (10), `src/preview/pdf_render.rs` (9),
+`src/watcher/watcher.rs` (8) and `src/runtime.rs` (7). Those are the symptom in L7, not
+contracts to preserve; `app.rs + main.rs` at 12 is mechanical wiring. The four rows
+above are contracts — touch one side and check the other.
 
 ### Removed and abandoned work — do not reintroduce
 
@@ -250,9 +252,8 @@ rows are contracts: touch one side and check the other.
 | pdfium in the indexing path | 2026-07-21 | "switch indexer to pure-Rust pdf-extract, remove pdfium_lock" | `292ee36` |
 | A global pdfium `Mutex` | 2026-07-21 | "shrink lock scope", then removal with the indexer switch | `1b09924`, `292ee36` |
 
-No path was ever deleted from this repository (`--diff-filter=D` returns nothing), so
-there is no removed file to guard. Three *settings and mechanisms* were removed as
-above. `[observed]`
+No path was ever deleted here (`--diff-filter=D` returns nothing); only the three
+settings and mechanisms above. `[observed]`
 
 ## Safe-change checklist
 
@@ -297,11 +298,8 @@ Before you call it done:
 
 ```
 a815c24  debug: pinpoint bind_to_library hang with eprintln before/after
-f22d42f  fix: enable thread_safe feature for pdfium-render — root cause of PDF render...
 7eca893  fix: serialize FPDF_InitLibrary() across threads with global Mutex
-dc77133  fix: PDF rendering now works — serialized FPDF_InitLibrary, clean debug outp...
 1b09924  fix: shrink lock scope, add render coalescing
-be40850  fix: pre-init pdfium on main thread before spawning worker threads
 6cdcbe8  fix: keep pre-init Pdfium alive with mem::forget
 292ee36  fix: switch indexer to pure-Rust pdf-extract, remove pdfium_lock
 ```
@@ -357,12 +355,11 @@ fd84001  fix: remove panic=abort from release profile
 
 - **What changed:** 13 units and a thread-wiring change landed as single commits, inside a
   23-hour session where commits were minutes apart.
-- **What broke:** both feature commits drew multi-file repair within hours —
-  `8dd1fd8` on `search/engine.rs`, `indexer/extractors/pdf.rs` and
-  `preview/pdf_render.rs`; `68b62f9` on `tags/store.rs`, `app.rs` and `main.rs`. Storm 1
-  follows `8dd1fd8` (02:26 → 02:55), storm 2 follows `9a709f6` "perf: pre-allocate search
-  result vector with capacity" (10:46 → 11:24), storm 3 follows `7a2229c` (14:22 →
-  14:31).
+- **What broke:** both feature commits drew multi-file repair within hours. `8dd1fd8`
+  hit `src/search/engine.rs`, `src/indexer/extractors/pdf.rs` and
+  `src/preview/pdf_render.rs`; `68b62f9` hit `src/tags/store.rs`, `src/app.rs` and
+  `src/main.rs`. Storm 1 follows `8dd1fd8` (02:26 → 02:55), storm 2 follows `9a709f6`
+  (10:46 → 11:24), storm 3 follows `7a2229c` (14:22 → 14:31).
 - **The rule it produced:** see L5.
 - **Grade:** `[inferred]` — the storms are in the data; the causal link to commit size
   is a reading, and the falsifier is a similarly sized commit that needed no fixes.
@@ -373,31 +370,22 @@ fd84001  fix: remove panic=abort from release profile
 d54a8e1  fix: pdfium tests gracefully skip when DLL unavailable
 ```
 
-- **What changed:** tests that need `pdfium.dll` skip instead of failing when the DLL
-  is absent.
-- **Why it matters:** the DLL is not in the repository, so a hard failure would make
-  `cargo test` red on any clean machine and the team would stop running it.
-- **The rule it produced:** see the Testing rule in Project-specific implementation
-  rules.
-- **Grade:** `[observed]`
+The DLL is not in the repository, so a hard failure would make `cargo test` red on any
+clean machine and the team would stop running it. See the Testing rule above.
+`[observed]`
 
 ---
 
 ## Analysis notes
 
-- **Coverage:** 66 commits, 100% of history; 33 distinct paths under `src/` plus
-  `Cargo.toml`. Analysis window was the entire repo, so no rule here is truncated by a
-  window.
+- **Coverage:** 66 commits, 100% of history; 33 paths under `src/` plus `Cargo.toml`.
+  The window was the whole repo, so no rule is truncated by a window.
 - **Not covered:** `*.md`, `Cargo.lock`, and `docs/` were excluded from churn and
-  coupling so that documentation commits would not distort the counts. `docs/plans/` was
-  then read directly for the planning convention.
-- **Weak signals:**
-  - The reason for the `panic = "abort"` removal is unknown; only the removal is
-    evidence (Example 3).
-  - No path was ever deleted, so there is no "removed feature" lesson. Any claim about
-    abandoned features would be invented.
-  - Couplings were counted over all 66 commits. With a corpus this small, a pair at
-    count 5 is three events away from being noise.
+  coupling; `docs/plans/` was then read directly for the planning convention.
+- **Weak signals:** the reason for the `panic = "abort"` removal is unknown, so only the
+  removal is evidence (Example 3). No path was ever deleted, so any claim about
+  abandoned features would be invented. With only 66 commits, a coupling pair at count
+  5 is three events from noise.
 - **Unknowns:**
   - The repository is 23 hours old and single-author. **None of these rules has survived
     a second developer or a second month.** Treat every rule as a hypothesis about

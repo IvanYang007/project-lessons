@@ -3,6 +3,32 @@
 The document's value rests on the reader trusting it. One invented convention destroys
 that trust for every other rule. Grade everything, and publish the grade.
 
+## In-repo documents are primary sources
+
+A file the project wrote about itself outranks your inference. `docs/adr/`,
+`docs/RECURRING_ISSUES.md`, `KNOWN_ISSUES.md`, a postmortem, a threat model, or a
+`CONTRIBUTING.md` that states a rule is an `[observed]` source, exactly like a commit
+body. Cite it the same way.
+
+Two consequences:
+
+1. **Grade it, do not trust it.** A prior document records what someone believed when
+they wrote it. Check each claim against the history. A claim the history contradicts is
+   the single most valuable finding a run can produce — write it, quote both sides.
+2. **Do not duplicate it.** If the document already states the rule, `PROJECT_LESSONS.md`
+   points at it and adds only the commit hashes and what the document misses. Two copies
+   of one rule drift apart, and the reader cannot tell which to follow.
+
+A stale prior document is a specific and useful finding:
+
+```
+Rule:   "Always set android:resizeMode=\"none\" on 1x1 widgets."
+Source: docs/RECURRING_ISSUES.md
+Status: STALE - superseded by <sha>, which removed the 1x1 layout entirely.
+```
+
+That is worth more than a new rule, because someone is still reading the old one.
+
 ## The three grades
 
 ### `[observed]`

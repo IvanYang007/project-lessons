@@ -14,8 +14,10 @@ rules**, each tied to a commit hash and graded for evidence strength.
 ## Non-negotiables
 
 1. **Read-only.** Run only `git log`, `git show`, `git diff`, `git blame`,
-   `git shortlog`, `git tag`. Never `checkout`, `reset`, `clean`, `stash`, or
-   write into `.git/`. If the tree is dirty, leave it dirty.
+   `git shortlog`, `git tag`, `git ls-files`, `git check-ignore`, `git rev-list`.
+   Never `checkout`, `reset`, `clean`, `stash`, or write into `.git/`. If the tree is
+   dirty, leave it dirty. **Never rewrite history** — if a credential was committed,
+   report it and stop.
 2. **No invention.** Every rule you write must trace to a commit hash, a file path,
    or an in-code marker. If you cannot cite it, do not write it.
 3. **No generic advice.** "Write tests", "keep functions small", and "avoid
@@ -99,6 +101,33 @@ Record, in one paragraph, what this repo is and what it is built with. Read the 
 point and one representative module. If the shape of the code contradicts the history,
 trust the code and re-read the history.
 
+### Phase 0.2 — Read what the repo already wrote down
+
+Do this before any synthesis. Many repositories already document their own decisions and
+recurring faults. A document that duplicates them is worse than useless: it drifts from
+them, and the next reader cannot tell which one to trust.
+
+```bash
+git ls-files | rg -i 'recurring|known.?issues|lessons|troubleshoot|postmortem|decisions?\.md|code.?review|threat|invariants'
+git ls-files -- '*/adr/*' '*/decisions/*' '.scratch/*' '*SECURITY*' '*CONTRIBUTING*' '*ARCHITECTURE*'
+```
+
+Read every file found and write `.project-lessons-work/00-prior-docs.md` with, per file:
+what it claims, which claims have a commit behind them, which claims the history
+contradicts, and which claims are stale because a later commit fixed the thing.
+
+Then hold this table for the rest of the run:
+
+| Situation | What to write |
+| --- | --- |
+| The repo documents a rule the history confirms | Cite the document as `[observed]`, add the hashes, and **point at it instead of restating it** |
+| The repo documents a rule the history contradicts | Write the contradiction and quote both sides. This is the highest-value finding a run can produce |
+| The repo documents a rule a later commit fixed | Mark it stale and cite the fix |
+| The repo documents nothing | Proceed normally |
+
+Never copy a prior document into `PROJECT_LESSONS.md`. Link to it and add only what it
+is missing.
+
 **Noise filter.** Exclude from every later analysis:
 
 ```
@@ -155,10 +184,45 @@ top-20 churn files, commit-style, bus factor.
 
 ---
 
-### Phase 2 — Removals and abandoned work
+### Phase 2 — Removals, abandoned work, and committed secrets
 
 This is the highest-value phase. A removed feature, a dropped library, and a deleted
-subsystem each carry a reason the code no longer shows.
+subsystem each carry a reason the code no longer shows. A deleted credential is worse.
+
+**Run the secret scan first.** A path that was ever committed still lives in the packfile
+after deletion, and a public push publishes it.
+
+```bash
+# every path ever added, filtered to secret-shaped names
+# POSIX
+git log --pretty=format: --diff-filter=A --name-only \
+  | grep -v '^$' | sort -u \
+  | grep -iE 'passw|secret|credential|\.env|token|apikey|api[_-]?key|\.pem|\.jks|\.keystore|id_rsa|\.pfx|key\.txt'
+
+# is a specific suspect still reachable in history?
+git log --all --oneline -- "<path>"
+git rev-list --all --objects | rg --fixed-strings "<path>"
+```
+
+On Windows use `rg -i` in place of the final `grep -iE`.
+
+When a secret-shaped path was ever committed:
+
+1. **Do not print the value, in the work bundle or in the output.** Read the commit only
+   to establish that it happened.
+2. Record: path, the commit that added it, the commit that removed it, and whether any
+   remote exists. Then check exposure:
+   ```bash
+   git remote -v
+   git log --oneline origin/HEAD -- "<path>" 2>/dev/null
+   ```
+3. Write the finding as a BLOCKING item in the output under Known risk areas, with the
+   action "rotate the credential and purge it from history before any public push".
+4. **Never rewrite history yourself.** Report it and stop at the report. A history rewrite
+   is the owner's decision.
+
+**Why this belongs in this skill.** Deleting a file from a later commit does not remove
+it from history. Only `git filter-repo` or a fresh repository does.
 
 ```bash
 # every path ever deleted
@@ -345,10 +409,17 @@ A TODO with a reason is a deferred decision. A TODO with no owner and no date is
 - what is covered: unit, integration, golden/snapshot, e2e
 - what is deliberately not covered
 - whether fixes are expected to ship with a test (use Phase 3 R5 as evidence)
+- **invariant tests**: does the project assert its own configuration? Look for tests that
+  read a manifest, XML, gradle, or config file and assert a value
+  (`rg -n 'readText\(\)|getResourceAsStream|File\(' --glob '*test*'`). This is a strong,
+  portable pattern: it turns a written rule into a red test.
 
 If a fix commit rewrote a test, say so — that is evidence a test was missing.
 
 Write `.project-lessons-work/05-conventions.md`.
+
+**Consolidate with Phase 0.2.** Do not write a rule that a prior document already
+carries. Cite the document and spend the rule budget on what it misses.
 
 ---
 
@@ -389,6 +460,16 @@ Rules of writing:
 
 ## Phase 7 — Quality gates
 
+Run the checker first. It enforces the BLOCKING list below mechanically:
+
+```bash
+python scripts/check_output.py PROJECT_LESSONS.md project-lessons.json .
+```
+
+Exit code 0 means every blocking gate passed. Fix everything it reports as BLOCKING. The
+prose list below is the same contract in human-readable form — keep it for the cases a
+regex cannot judge.
+
 Run every check. Fix, then re-check. Do not deliver with a failing gate.
 
 **BLOCKING**
@@ -398,10 +479,13 @@ Run every check. Fix, then re-check. Do not deliver with a failing gate.
 - [ ] No generic advice. Test each bullet: could it appear in an unrelated repo
       unchanged? Delete it.
 - [ ] No restatement of what a linter, formatter, or CI job already enforces.
+- [ ] No restatement of a prior in-repo document (Phase 0.2). Cite it instead.
 - [ ] All six required sections exist.
 - [ ] Every risk-area path exists in the current tree (or is labelled removed).
 - [ ] All commands used were read-only.
 - [ ] No secret reached the document. Re-scan the output for keys and tokens.
+- [ ] If any secret-shaped path was ever committed, it is reported with rotation
+      required, and the value is not quoted anywhere.
 - [ ] Total length is 80-400 lines. Under 80, you under-analyzed. Over 400, you
       transcribed instead of synthesizing.
 - [ ] Safe-change checklist has 5-12 items, each verifiable by running something.
@@ -456,6 +540,9 @@ and throws away human review effort.
 | Inventing textbook architecture | Derive boundaries from coupling and removals |
 | Secrets in the output | Scrub before writing; re-scan after |
 | Rule that says "be careful with X" | Name the failure, the symptom, and the guard |
+| Duplicating `docs/RECURRING_ISSUES.md` or an ADR | Cite it, add the hashes, spend the budget elsewhere |
+| "No secrets found" without checking deleted paths | Deleted paths stay in history. Run the Phase 2 scan |
+| Quoting a leaked credential to "prove" the finding | Never print the value. The path and the two commits are the proof |
 
 ## References
 
@@ -463,6 +550,7 @@ and throws away human review effort.
 - `references/analysis-playbook.md` — full command reference per signal
 - `references/evidence-grading.md` — how to grade, and when to say "unknown"
 - `references/prior-art.md` — evaluation of the tools and papers this skill draws on
+- `scripts/check_output.py` — the Phase 7 gate checker
 
 ## Scoped output naming
 
