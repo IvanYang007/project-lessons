@@ -16,6 +16,7 @@ repository with no PR history, no released versions, and no deleted files.
 | --- | --- |
 | `papervault-recurrence.md` | Raw output of `scripts/recurrence.py`. R1-R5 plus the fix-ratio table. This is the evidence the document was written from. |
 | `papervault-PROJECT_LESSONS.md` | The finished artifact, produced by following `SKILL.md` and `references/output-template.md`. |
+| `papervault-project-lessons.json` | The machine-readable mirror: 8 rules, 8 risk areas, 7 couplings, 12 checklist items, each with its evidence hashes. |
 | `papervault-coupling.py` | The change-coupling pass, as run (PowerShell 5.1 cannot do the awk two-pointer loop). |
 
 ## What the mechanical pass found, in one line each
