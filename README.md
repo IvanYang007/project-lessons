@@ -61,27 +61,47 @@ convention — it only writes up signals the commands found.
 git history
    |  1. survey      size, age, commit-style, file churn
    |  2. removals    what was added and later deleted, and the reason
-   |  3. landmarks   reverts, dropped libraries, abandoned subsystems
-   |  4. recurrence  quick-remedy pairs, repeated fix clusters, same-bug-again text
+   |  3. landmarks   reverts, dropped settings, abandoned subsystems
+   |  4. recurrence  quick-remedy attribution, fix storms, fix clusters, same-bug text
    |  5. coupling    file pairs that change together (Tornhill change coupling)
    |  6. density     fix-density per file -> risk map
    v
-evidence bundle (Markdown + JSON) kept on disk
+evidence bundle (Markdown, in .project-lessons-work/)
    |
    v  7. synthesis   LLM writes PROJECT_LESSONS.md from the bundle only
+   |
+   v  8. gates       BLOCKING checks: every rule cited, graded, and non-generic
 ```
 
-Recurrence detection is the core of the skill. Four signals, all mechanical:
+Recurrence detection is the core of the skill. Five signals, all mechanical:
 
-1. **Quick-remedy pairs** — a `fix:` commit within 72h of a commit that touched one of
-   the same files. The earlier change omitted something. (Wen et al., *Quick remedy
-   commits and their impact on mining software repositories*, EMSE 2022.)
-2. **Repeated-removal paths** — a file added and deleted more than once.
-3. **Fix-cluster files** — one file, three or more `fix:` commits.
+1. **Quick-remedy attribution** — a `fix:` commit within 72h of an earlier non-fix commit
+   that touched one of the same files. The earlier change omitted something. Each fix is
+   attributed to exactly one earlier commit, so a burst of fixes reads as *this commit
+   needed six follow-up fixes* instead of one giant transitive cluster.
+   (Wen et al., *Quick remedy commits and their impact on mining software repositories*,
+   EMSE 2022.)
+2. **Fix storms** — runs of fix commits with no intervening feature commit. The work
+   landed before it was ready.
+3. **Fix-cluster files** — one file with three or more `fix:` commits.
 4. **Same-bug-again text** — `again`, `still`, `same`, `also`, `forgot`, `missing`,
    `regression`, `hotfix` in fix messages.
+5. **Fix commits that changed test code** — detected by diff marker, not just by file
+   path, so colocated and inline tests are found.
 
 Signals 1 and 4 are the ones that find a *repeated* mistake rather than a single bug.
+
+## Layout
+
+```
+SKILL.md                       the skill
+references/output-template.md  the exact PROJECT_LESSONS.md contract
+references/analysis-playbook.md  full command reference per signal
+references/evidence-grading.md   how to grade, and how to scrub secrets
+references/prior-art.md          evaluation of the tools and papers below
+scripts/recurrence.py          dependency-free R1-R5 detector
+examples/                      a real generated artifact, for calibration
+```
 
 ## Install
 
@@ -137,7 +157,18 @@ once**, which is the one class of lesson an agent most needs to not repeat.
 
 ## Status
 
-Working. Validated against real repositories — see [`examples/`](examples/).
+Working. Validated end to end on a real repository:
+[`examples/papervault-PROJECT_LESSONS.md`](examples/papervault-PROJECT_LESSONS.md) was
+produced from a 66-commit Rust repo. The mechanical pass found 35 fix commits, three
+fix storms, and the single commit in that history whose message admits a repeat.
+
+Two defects were found and fixed during that validation:
+
+- Quick-remedy pairing flooded with noise on a burst-fix repo, because every fix sat
+  inside the window of every other fix. Replaced with attribution to the nearest earlier
+  non-fix commit.
+- Test detection by file path reported "0 of 35 fixes touched tests" on a Rust repo that
+  keeps its tests inline. Adding a `git log -G` diff marker found 7 of 35.
 
 ## License
 
